@@ -4,7 +4,10 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  deleteFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
@@ -123,10 +126,42 @@ const updateVideo = asyncHandler(async (req, res) => {
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: delete video
+
+  const video = await Video.findByIdAndDelete(videoId);
+
+  if (!video) {
+    return res.status(400).json(new ApiResponse(400, {}, "Video Not Found"));
+  }
+  const { thumbnail, videoFile } = video;
+
+  await deleteFromCloudinary(thumbnail);
+  await deleteFromCloudinary(videoFile);
+
+  return res
+    .status(204)
+    .json(new ApiResponse(204, { a, b, video }, "Video Deleted Successfully"));
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
+  if (!videoId) {
+  }
+
+  const video = await Video.findByIdAndUpdate(
+    videoId,
+    [{ $set: { isPublished: { $not: "$isPublished" } } }],
+    { new: true }
+  );
+
+  if (!video) {
+    return res.status(400).json(new ApiResponse(400, {}, "Video Not Found"));
+  }
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, video, "Video Publish Status Update Successfull")
+    );
 });
 
 export {
